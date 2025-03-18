@@ -1,8 +1,8 @@
-# VBNC-Detection
+# HMI-Fusion
 
-VBNC detection of *E. coli* K12 using hyperspectral microscopy and EfficientNetv2. 
+ 
 
-This repository provides the code (excluding USDA-ARS proprietary components) and example images for the article **"Detection of Viable but Non-Culturable *E. coli* Induced by Low-Level Antimicrobials Using AI-Enabled Hyperspectral Microscopy"**, published in [Journal of Food Protection](https://doi.org/10.1016/j.jfp.2024.100430).
+This repository provides the code (excluding USDA-ARS proprietary components) and example images for the article (add article hyperlink)
 
 
 ## Contents
@@ -21,13 +21,13 @@ This repository provides the code (excluding USDA-ARS proprietary components) an
 1. Create a conda environment using the following command:
 
     ```
-    $ conda create -n vbnc-detection python=3.8
+    $ conda create -n hmi-fusion python=3.8
     ```
 
-2. Activate your conda environment named `vbnc-detection`: 
+2. Activate your conda environment named `hmi-fusion`: 
 
     ```
-    $ conda activate vbnc-detection
+    $ conda activate hmi-fusion
     ```
 
 3. Run the following command to install required packages:
@@ -41,10 +41,7 @@ This repository provides the code (excluding USDA-ARS proprietary components) an
 
 ### Classes
 
-In this study, we distinguish between two physiological states of *E. coli* K12 cells:
-
-- **Normal**: *E. coli* cells cultured under optimal growth conditions.
-- **VBNC**: VBNCs induced by low-level peracetic acid (PAA).
+In this study, we distinguish between ....
 
 
 ### Data format
@@ -59,9 +56,6 @@ Each raw hyperspectral microscope imaging (HMI) dataset consists of the followin
 ### Data path on local lab machine
 
 Our HMI datasets are selectively copied to: `/mnt/data/cifs/HMI/`. This is linked to MSU EGR Network Drive (See [Lab-SOPs](https://github.com/food-ai-engineering-lab/Lab-SOPs/tree/main/3-Lab-Data)) where we store all raw data.
-
-- **Normal**: `/mnt/data/cifs/HMI/0407-Ecoli-Live`
-- **VBNC**: `/mnt/data/cifs/HMI/0407-Ecoli-PAA`
 
 
 ## Data Pre-Processing
@@ -136,9 +130,7 @@ A **pseudo RGB** image is created by mapping three selected spectral wavelengths
 
 ### Data split 
 
-1. From the `outputs/Normal` and `outputs/VBNC` folders manually split the images for model training and evaluation. Split 80% into the `training` folder. Make sure to put the Normal images in the `Normal` folder and VBNC images in the `VBNC` folder.
-
-2. The remaining 20% of your images will go into the `evaluate` folder and should have all of the images together.
+use split.py. add instructions
 
 
 ## Model Training
@@ -192,17 +184,7 @@ python evaluate.py -rt /mnt/projects/papameil/VBNC-detection/training/ -r /mnt/p
 
 ## Example Outputs
 
-Example pseudo-RGB image
-
-<img src="readme/pseudo.png" alt="pseudo-RGB image" width="400"/>
-
-Example RGB image
-
-<img src="readme/RGB.png" alt="RGB image" width="400"/>
-
-Example confusion matrix
-
-<img src="readme/confusion.png" alt="confusion matrix" width="400"/>
+add examples
 
 
 ## Acknowledgments
