@@ -2,7 +2,7 @@
 
  
 
-This repository provides the code (excluding USDA-ARS proprietary components) and example images for the article **"Detection of Viable but Non-Culturable *E. coli* Induced by Low-Level Antimicrobials Using AI-Enabled Hyperspectral Microscopy"**, published in [Journal of Food Protection](https://doi.org/10.1016/j.jfp.2024.100430).
+This repository provides the code (excluding USDA-ARS proprietary components) and example images for the article (add article hyperlink)
 
 
 ## Contents
