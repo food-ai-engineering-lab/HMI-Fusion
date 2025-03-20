@@ -11,7 +11,7 @@ from torch import nn
 from torch.utils.data import DataLoader
 import pytorch_lightning as pl
 import argparse
-from architecture import EfficientNet, SpectralSpatialNet
+from architecture import EfficientNet, SpectralSpatialNet, SpectralPredictor
 from datatools import McolonyTestData, SpectralHMITestData
 from datatools import McolonyTestData
 from sklearn.metrics import precision_score, recall_score, f1_score
@@ -53,8 +53,9 @@ def main(args):
 
     # Load model from checkpoint
     # model = SpectralSpatialNet
-    model_args = {'output_len': 64}
-    model = SpectralSpatialNet.load_from_checkpoint(ckpt, **model_args)
+    model_args = {'output_len': 1024}
+    # model = SpectralSpatialNet.load_from_checkpoint(ckpt, **model_args)
+    model = SpectralPredictor.load_from_checkpoint(ckpt, **model_args)
     model.cuda()    # Move model to GPU
     model.eval()    # Set model to evaluation mode
     print('Model loaded')
@@ -70,7 +71,7 @@ def main(args):
         d = next(itt)
         data, fnames = d  # data is (images, masks, spectra)
         
-        if isinstance(model, SpectralSpatialNet):
+        if isinstance(model, SpectralSpatialNet) or isinstance(model, SpectralPredictor):
             # Move each component to GPU as a batch tensor
             images = data[0].cuda()  # Entire image batch tensor
             masks = data[1].cuda()   # Entire mask batch tensor
@@ -81,7 +82,8 @@ def main(args):
             input = data['image'].cuda()  # Entire image batch tensor
         # Perform inference
         with torch.no_grad():
-            pred = model(input)  # Pass tuple directly
+            if isinstance(model, SpectralPredictor):
+                pred, _ = model(input)
             # get pred for each image
             pred = [torch.argmax(x,dim=0).cpu().numpy() for x in pred]
             pred_list.append(pred) #list, e.g. [[5], [0]]
@@ -165,9 +167,9 @@ if __name__ == '__main__':
         args = parser.parse_args()
     else:
         class Args:
-            root_train = '/mnt/projects/bhatta70/VBNC-Detection/data_rgb/train/'
-            root = '/mnt/projects/bhatta70/VBNC-Detection/data_rgb/test/'
-            ckpt = '/mnt/projects/bhatta70/VBNC-Detection/lightning_logs/my_model/version_28/checkpoints/mcolony-epoch=54-val_loss_epoch=1.09.ckpt'
+            root_train = '/mnt/projects/bhatta70/HMI-Fusion/data_rgb/train/'
+            root = '/mnt/projects/bhatta70/HMI-Fusion/data_rgb/test/'
+            ckpt = '/mnt/projects/bhatta70/HMI-Fusion/lightning_logs/my_model/version_41/checkpoints/mcolony-epoch=53-val_loss_epoch=0.47.ckpt'
             workers = 0
             batch = 1
         args = Args()

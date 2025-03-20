@@ -129,7 +129,21 @@ class EfficientNet(pl.LightningModule):
         self.test_recall.reset()
         self.test_f1.reset()
 
-
+    def update_train_metrics(self, pred, target):
+        self.train_acc(pred, target)
+        self.train_precision(pred, target)
+        self.train_recall(pred, target)
+        self.train_f1(pred, target)
+    def update_val_metrics(self, pred, target):
+        self.val_acc(pred, target)
+        self.val_precision(pred, target)
+        self.val_recall(pred, target)
+        self.val_f1(pred, target)
+    def update_test_metrics(self, pred, target):
+        self.test_acc(pred, target)
+        self.test_precision(pred, target)
+        self.test_recall(pred, target)
+        self.test_f1(pred, target)
     # define the optimizer and learning rate scheduler
     def configure_optimizers(self):
         # create an instance of the AdamW optimizer
@@ -194,10 +208,7 @@ class SpectralSpatialNet(EfficientNet):
         self.log('train_loss', loss, on_step=True, on_epoch=True, prog_bar=True, logger=True)
         
         # Update metrics
-        self.train_acc(pred, target)
-        self.train_precision(pred, target)
-        self.train_recall(pred, target)
-        self.train_f1(pred, target)
+        self.update_train_metrics(pred, target)
         return loss
 
     def validation_step(self, batch, batch_idx):
@@ -207,10 +218,7 @@ class SpectralSpatialNet(EfficientNet):
         self.log('val_loss', loss, on_step=True, on_epoch=True, prog_bar=True, logger=True)
 
         # Update metrics
-        self.val_acc(pred, target)
-        self.val_precision(pred, target)
-        self.val_recall(pred, target)
-        self.val_f1(pred, target)
+        self.update_val_metrics(pred, target)
         return loss
         
     def test_step(self, batch, batch_idx):
@@ -220,10 +228,7 @@ class SpectralSpatialNet(EfficientNet):
         self.log('test_loss', loss, on_step=True, on_epoch=True, prog_bar=True, logger=True)
         
         # Update metrics
-        self.test_acc(pred, target)
-        self.test_precision(pred, target)
-        self.test_recall(pred, target)
-        self.test_f1(pred, target)
+        self.update_test_metrics(pred, target)
         return loss
     
     def configure_optimizers(self):
@@ -236,5 +241,100 @@ class SpectralSpatialNet(EfficientNet):
     
         # torch.nn.utils.clip_grad_norm_(self.parameters(), max_norm=1.0)
         # decreases the learning rate every 10 epochs by a factor of 0.3
+        sch = {'scheduler': lr_scheduler.StepLR(opt, step_size=10, gamma=0.3)}
+        return [opt], [sch]
+    
+class SpectralPredictor(EfficientNet):
+    '''
+        Predicts the spectral feature vector from the input image
+    '''
+    def __init__(self, num_classes=5, output_len: int=None, spectral_loss_weight=0.5):
+        spatial_out_dim = num_classes if output_len is None else output_len
+        super(SpectralPredictor, self).__init__(spatial_out_dim)
+        
+        self.spectral_loss_weight = spectral_loss_weight
+        self.spectral_predictor = nn.Sequential(
+            nn.Linear(spatial_out_dim, spatial_out_dim),
+            nn.ReLU(),
+            nn.Linear(spatial_out_dim, 303),
+        )
+        self.classifier = nn.Sequential(
+            nn.Linear(spatial_out_dim, spatial_out_dim),
+            nn.ReLU(),
+            nn.Linear(spatial_out_dim, num_classes)
+        )
+        
+    def forward(self, x):
+        img, mask, _ = x
+        img_features = self.model(img)
+        spectral_features = self.spectral_predictor(img_features)
+        class_pred = self.classifier(img_features)
+
+        return class_pred, spectral_features
+    
+    def training_step(self, batch, batch_idx):
+        data, target = batch
+        img, mask, spectra = data
+        class_pred, spectral_pred = self(data)
+        class_loss = F.cross_entropy(class_pred, target)
+        spectral_loss = F.mse_loss(spectral_pred, spectra)
+        loss = (1-self.spectral_loss_weight)*class_loss + self.spectral_loss_weight*spectral_loss
+        self.log('class_loss', class_loss, on_step=True, on_epoch=True, prog_bar=True, logger=True)
+        self.log('spectral_loss', spectral_loss, on_step=True, on_epoch=True, prog_bar=True, logger=True)
+        self.log('train_loss', loss, on_step=True, on_epoch=True, prog_bar=True, logger=True)
+
+        # Update metrics
+        self.update_train_metrics(class_pred, target)
+        return loss
+    
+    def validation_step(self, batch, batch_idx):
+        data, target = batch
+        img, mask, spectra = data
+        class_pred, spectral_pred = self(data)
+        class_loss = F.cross_entropy(class_pred, target)
+        spectral_loss = F.mse_loss(spectral_pred, spectra)
+        loss = (1-self.spectral_loss_weight)*class_loss + self.spectral_loss_weight*spectral_loss
+        self.log('val_class_loss', class_loss, on_step=True, on_epoch=True, prog_bar=True, logger=True)
+        self.log('val_spectral_loss', spectral_loss, on_step=True, on_epoch=True, prog_bar=True, logger=True)
+        self.log('val_loss', loss, on_step=True, on_epoch=True, prog_bar=True, logger=True)
+
+        current_epoch = self.current_epoch
+        save_dir = self.trainer.logger.log_dir
+        if current_epoch%1 == 0:
+            # create figure of true spectra and predicted spectra (on same plot)
+            fig, ax = plt.subplots()
+            ax.plot(spectra[0].detach().cpu().numpy(), label='True')
+            ax.plot(spectral_pred[0].detach().cpu().numpy(), label='Predicted')
+            ax.set_title('Spectral Prediction on Validation Data')
+            ax.legend()
+            plt.savefig(os.path.join(save_dir, f'spectral_pred_{current_epoch}.png'))
+            plt.close(fig)
+
+
+        # Update metrics
+        self.update_val_metrics(class_pred, target)
+        return loss
+    
+    def test_step(self, batch, batch_idx):
+        data, target = batch
+        img, mask, spectra = data
+        class_pred, spectral_pred = self(data)
+        class_loss = F.cross_entropy(class_pred, target)
+        spectral_loss = F.mse_loss(spectral_pred, spectra)
+        loss = (1-self.spectral_loss_weight)*class_loss + self.spectral_loss_weight*spectral_loss
+        self.log('test_class_loss', class_loss, on_step=True, on_epoch=True, prog_bar=True, logger=True)
+        self.log('test_spectral_loss', spectral_loss, on_step=True, on_epoch=True, prog_bar=True, logger=True)
+        self.log('test_loss', loss, on_step=True, on_epoch=True, prog_bar=True, logger=True)
+
+        # Update metrics
+        self.update_test_metrics(class_pred, target)
+        return loss
+    
+    def configure_optimizers(self):
+        opt = torch.optim.AdamW([
+            {'params': self.model.parameters()},
+            {'params': self.spectral_predictor.parameters(), 'lr': 1e-4},
+            {'params': self.classifier.parameters(), 'lr': 1e-4}
+        ], lr=1e-3, weight_decay=1e-2)
         sch = {'scheduler': lr_scheduler.StepLR(opt, step_size=10, gamma=0.3)}
         return [opt], [sch]
