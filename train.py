@@ -6,7 +6,7 @@ import pytorch_lightning as pl
 from pytorch_lightning.callbacks import ModelCheckpoint, LearningRateMonitor, TQDMProgressBar, EarlyStopping
 import argparse
 from datatools import McolonyDataModule, SpectralHMIDataModule
-from architecture import EfficientNet, SpectralSpatialNet
+from architecture import EfficientNet, SpectralSpatialNet, SpectralPredictor
 from torchmetrics import Accuracy
 from pytorch_lightning.loggers import TensorBoardLogger
 
@@ -41,7 +41,8 @@ def main(args):
 
     # Initialize model
     # model = EfficientNet(output_len=5)
-    model = SpectralSpatialNet(output_len=64)
+    # model = SpectralSpatialNet(output_len=32)
+    model = SpectralPredictor(output_len=1024)
 
     # Initialize checkpoint object to save model with best validation loss
     checkpoint = ModelCheckpoint(monitor='val_loss_epoch',
@@ -84,7 +85,7 @@ if __name__ == '__main__':
     # Set up argument parser
     parser = argparse.ArgumentParser()
     parser.add_argument('-r', '--root', type=str, help='Root folder of the dataset', 
-                        default='/mnt/projects/bhatta70/VBNC-Detection/data_rgb/train/')
+                        default='/mnt/projects/bhatta70/HMI-Fusion/data_rgb/train/')
     parser.add_argument('-w', '--workers', type=int, help='Number of dataloader workers per GPU', default=5)
     parser.add_argument('-b', '--batch', type=int, help='Batch size per GPU', default=8)
     parser.add_argument('-g', '--gpus', type=int, help='Number of GPUs', default=1)
